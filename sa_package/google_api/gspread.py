@@ -4,11 +4,6 @@ import pandas as pd
 from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
 
-SCOPE = ["https://spreadsheets.google.com/feeds",
-        "https://www.googleapis.com/auth/drive"]
-CREDS = ServiceAccountCredentials.from_json_keyfile_name("C:/Users/SANDBOX/sandbox_workspace/key.json", SCOPE)
-
-
 class GspreadConnection:
 
     def __init__(self, scope, key_path):
