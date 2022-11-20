@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="sa_package",
-    version="0.0.9",
+    version="0.0.10",
     
     url="https://github.com/tmddk2709/sa_package",
     author="Seunga Shin",
