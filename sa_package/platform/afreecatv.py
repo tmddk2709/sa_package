@@ -29,11 +29,14 @@ class AfreecaTVDriver:
 
         self.setting()
 
-        self.get(afreeca_home_url)
+        self.to_home()
 
 
     # 로그인
     def login(self, login_id, login_pwd):
+
+        if self.__login_id is not None:
+            self.logout()
 
         self.__login_id = login_id
         self.__login_pwd = login_pwd
@@ -44,9 +47,9 @@ class AfreecaTVDriver:
         WebDriverWait(self.__driver, timeout=30).until(lambda x: x.find_element(By.CSS_SELECTOR, '#uid'))
 
         # 로그인 ID 입력
-        self.__driver.find_element(By.CSS_SELECTOR, '#uid').send_keys(PWD["AFREECA_LOGIN_ID"])
+        self.__driver.find_element(By.CSS_SELECTOR, '#uid').send_keys(self.__login_id)
         # 로그인 PWD 입력
-        self.__driver.find_element(By.CSS_SELECTOR, '#password').send_keys(PWD["AFREECA_LOGIN_PWD"])
+        self.__driver.find_element(By.CSS_SELECTOR, '#password').send_keys(self.__login_pwd)
         # 로그인 버튼 클릭
         self.__driver.find_element(By.CSS_SELECTOR, 'body > form:nth-child(11) > div > fieldset > p.login_btn > button').click()
 
@@ -71,6 +74,7 @@ class AfreecaTVDriver:
     # URL로 이동
     def get(self, url):
         self.__driver.get(url)
+
 
     # 드라이버 종료
     def close(self):
