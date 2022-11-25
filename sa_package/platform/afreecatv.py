@@ -5,24 +5,28 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.action_chains import ActionChains
 
-from my_package.my_selenium import get_driver
-from my_package.convert_data import convert_hhmmss_format_to_sec, convert_hannum_to_num
+from sa_package.my_selenium.webdriver import MyChromeDriver
+from sa_package.convert.time_format import convert_hhmmss_format_to_sec
+from sa_package.convert.number_format import convert_hannum_to_num
 
 import warnings
 warnings.filterwarnings('ignore')
 
 afreeca_home_url = "https://afreecatv.com/"
 
-class AfreecaTVDriver:
+class AfreecaTVDriver(MyChromeDriver):
 
     def __init__(self, **kwargs):
+        
+        self.__kwargs = kwargs
 
-        self.kwargs = kwargs
+        headless = self.__kwargs.get("headless", False)
+        maximize = self.__kwargs.get("maximize", True)
 
-        self.__login_id = self.kwargs.get("login_id", None)
-        self.__login_pwd = self.kwargs.get("login_pwd", None)
-
-        self.__driver = get_driver()
+        super().__init__(headless=headless, maximize=maximize)
+        
+        self.__login_id = self.__kwargs.get("login_id", None)
+        self.__login_pwd = self.__kwargs.get("login_pwd", None)
 
         if self.__login_id is not None:
             self.login(self.__login_id, self.__login_pwd)
@@ -42,43 +46,23 @@ class AfreecaTVDriver:
         self.__login_pwd = login_pwd
 
         login_url = "https://login.afreecatv.com/afreeca/login.php?szFrom=full&request_uri=https%3A%2F%2Fwww.afreecatv.com%2F"
-        self.__driver.get(login_url)
+        self.get(login_url)
 
-        WebDriverWait(self.__driver, timeout=30).until(lambda x: x.find_element(By.CSS_SELECTOR, '#uid'))
+        WebDriverWait(self, timeout=30).until(lambda x: x.find_element(By.CSS_SELECTOR, '#uid'))
 
         # 로그인 ID 입력
-        self.__driver.find_element(By.CSS_SELECTOR, '#uid').send_keys(self.__login_id)
+        self.find_element(By.CSS_SELECTOR, '#uid').send_keys(self.__login_id)
         # 로그인 PWD 입력
-        self.__driver.find_element(By.CSS_SELECTOR, '#password').send_keys(self.__login_pwd)
+        self.find_element(By.CSS_SELECTOR, '#password').send_keys(self.__login_pwd)
         # 로그인 버튼 클릭
-        self.__driver.find_element(By.CSS_SELECTOR, 'body > form:nth-child(11) > div > fieldset > p.login_btn > button').click()
+        self.find_element(By.CSS_SELECTOR, 'body > form:nth-child(11) > div > fieldset > p.login_btn > button').click()
 
         time.sleep(1)
-        
-
-    # 로그아웃
-    def logout(self):
-
-        self.__login_id = None
-        self.__login_pwd = None
-
-        #TODO - 로그아웃 구현
-        pass
 
 
     # 홈화면으로 이동
     def to_home(self):
         self.get(afreeca_home_url)
-
-
-    # URL로 이동
-    def get(self, url):
-        self.__driver.get(url)
-
-
-    # 드라이버 종료
-    def close(self):
-        self.__driver.close()
 
 
     # 세팅
@@ -87,39 +71,39 @@ class AfreecaTVDriver:
         #TODO - 기존 세팅 정보 참고해서 세팅 설정하기
 
         sample_vod_url = "https://vod.afreecatv.com/player/93937795"
-        self.__driver.get(sample_vod_url)
-        self.__driver.find_element(By.XPATH, '//*[@id="afreecatv_player"]/div[21]/dl/dd[2]/a').click()
+        self.get(sample_vod_url)
+        self.find_element(By.XPATH, '//*[@id="afreecatv_player"]/div[21]/dl/dd[2]/a').click()
 
         # 자동재생 설정
-        if self.kwargs.get("autoplay", "OFF") == "OFF":
+        if self.__kwargs.get("autoplay", "OFF") == "OFF":
             try:
-                if self.__driver.find_element(By.CSS_SELECTOR, '#autoplay').get_attribute("checked") == 'true':
-                    self.__driver.find_element(By.XPATH, '//*[@id="playlistP"]/dt/label/span').click()
+                if self.find_element(By.CSS_SELECTOR, '#autoplay').get_attribute("checked") == 'true':
+                    self.find_element(By.XPATH, '//*[@id="playlistP"]/dt/label/span').click()
                     time.sleep(0.5)
             except Exception as e:
                 pass
 
         # 리스트 지우기
-        if self.kwargs.get("vodlist", "OFF") == "OFF":
+        if self.__kwargs.get("vodlist", "OFF") == "OFF":
             try:
-                self.__driver.find_element(By.CSS_SELECTOR, '#list_area > div.area_header > ul:nth-child(2) > li.close > a').click()
+                self.find_element(By.CSS_SELECTOR, '#list_area > div.area_header > ul:nth-child(2) > li.close > a').click()
                 time.sleep(0.5)
             except Exception as e:
                 pass
 
         # 애드벌룬 광고창 지우기
         try:
-            if self.__driver.find_element(By.CSS_SELECTOR, '#player_area > div.htmlplayer_wrap > div > div.player_item_list.playbackrate.pip.statistics > ul > li.adballoon > div.speech_bubble').get_attribute("style") == 'display: block;':
-                self.__driver.find_element(By.CSS_SELECTOR, '#player_area > div.htmlplayer_wrap > div > div.player_item_list.playbackrate.pip.statistics > ul > li.adballoon > div.speech_bubble > a').click()
+            if self.find_element(By.CSS_SELECTOR, '#player_area > div.htmlplayer_wrap > div > div.player_item_list.playbackrate.pip.statistics > ul > li.adballoon > div.speech_bubble').get_attribute("style") == 'display: block;':
+                self.find_element(By.CSS_SELECTOR, '#player_area > div.htmlplayer_wrap > div > div.player_item_list.playbackrate.pip.statistics > ul > li.adballoon > div.speech_bubble > a').click()
                 time.sleep(0.5)
         except Exception as e:
             pass
 
         # 스크린모드 설정하기
-        if self.kwargs.get("vodlist", "ON") == "ON":
+        if self.__kwargs.get("vodlist", "ON") == "ON":
             try:
                 # 스크린모드
-                self.__driver.find_element(By.CSS_SELECTOR, '#rightCtrl > button.btn_smode').click()
+                self.find_element(By.CSS_SELECTOR, '#rightCtrl > button.btn_smode').click()
                 time.sleep(1)
 
             except Exception as e:
