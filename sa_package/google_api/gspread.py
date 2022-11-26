@@ -231,10 +231,10 @@ class SpreadSheet:
             print(e)
 
 
-    def get_df_from_gspread(self, worksheet_name, read_range, header=None, creds=CREDS):
+    def get_df_from_gspread(self, worksheet_name, read_range, header=None):
 
         try:
-            service = build("sheets", "v4", credentials=creds)
+            service = build("sheets", "v4", credentials=self.get_creds())
             sheet = service.spreadsheets()
 
             response = sheet.values().get(
