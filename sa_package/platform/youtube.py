@@ -70,7 +70,6 @@ def get_video_info(video_id):
     return video_info
 
 
-
 def get_channel_id_from_yt_link(url):
 
     req = request.Request(url)
@@ -81,37 +80,6 @@ def get_channel_id_from_yt_link(url):
     main_data = soup.find(class_="watch-main-col")
     channel_id = main_data.find("meta", itemprop="channelId")["content"]
 
-    return channel_id
-
-
-def get_channel_id_from_yt_link_(url, driver=None):
-
-    need_to_close_driver = False
-
-    if driver is None:
-        driver = MyChromeDriver()
-        need_to_close_driver = True
-
-    driver.get(url)
-    time.sleep(3)
-    
-    if len(driver.find_elements(By.XPATH, '//*[@id="channel-info"]/a')) > 0:
-        channel_link = driver.find_element(By.XPATH, '//*[@id="channel-info"]/a').get_attribute('href')  
-
-    elif len(driver.find_elements(By.XPATH, '//*[@id="owner"]/ytd-video-owner-renderer/a')) > 0:
-        channel_link = driver.find_element(By.XPATH, '//*[@id="owner"]/ytd-video-owner-renderer/a').get_attribute('href')  
-
-    else:
-        channel_link = driver.find_element(By.XPATH, '//*[@id="top-row"]/ytd-video-owner-renderer/a').get_attribute('href')
-
-
-    driver.get(f"view-source:{channel_link}")
-    time.sleep(3)
-    channel_id = driver.page_source.split("?channel_id=")[1].split('"')[0]
-
-    if need_to_close_driver:
-        driver.close()
-        
     return channel_id
 
 
@@ -126,32 +94,6 @@ def get_video_id_from_yt_link(url):
     video_id = main_data.find("meta", itemprop="videoId")["content"]
 
     return video_id
-
-
-def get_video_id_from_yt_link_(url):
-
-    if 'watch?v=' in url:
-        video_id = url.split('watch?v=')[-1]
-
-        if len(video_id) == 11:
-            return video_id
-        else:
-            video_id = video_id.split('&')[0]
-            if len(video_id) == 11:
-                return video_id
-    
-    else:
-        video_id = url.split('/')[-1]
-
-        if len(video_id) == 11:
-            return video_id
-        else:
-            video_id = video_id.split('?')[0]
-            if len(video_id) == 11:
-                return video_id
-
-    raise BaseException("video id 처리 불가")
-
 
 
 def get_recent_vod_list(channel_id, start_date=None, need_to_be_certain=False, driver=None):
@@ -217,7 +159,6 @@ def get_recent_vod_list(channel_id, start_date=None, need_to_be_certain=False, d
 
     else:
         return video_id_list
-
 
 
 def get_recent_shorts_list(channel_id, scroll_num=1, driver=None):
