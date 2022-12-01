@@ -1,5 +1,6 @@
 import time
 import pandas as pd
+from bs4 import BeautifulSoup
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -38,9 +39,6 @@ class AfreecaTVDriver(MyChromeDriver):
 
     # 로그인
     def login(self, login_id, login_pwd):
-
-        if self.__login_id is not None:
-            self.logout()
 
         self.__login_id = login_id
         self.__login_pwd = login_pwd
@@ -242,12 +240,10 @@ def get_favor_num(bj_id, driver=None):
 
 def get_vod_viewer_info(vod_id, vod_time, driver=None):
 
-    need_to_close = True
+    vod_info_df = pd.DataFrame(columns=["accv", "pccv", "chat", "방송시간", "라이브 참여", "해상도", "카테고리", "보관기간"])
 
     if driver is None:
         driver = AfreecaTVDriver()
-    else:
-        need_to_close = False
 
     link = f"https://vod.afreecatv.com/player/{vod_id}?change_second={vod_time-15}"
     driver.get(link)
@@ -279,9 +275,9 @@ def get_vod_viewer_info(vod_id, vod_time, driver=None):
 
     # 일시정지
     try:
-        time.sleep(1)
+        time.sleep(0.5)
         driver.find_element(By.XPATH, '//*[@id="videoLayerCover"]').click()
-        time.sleep(1)
+        time.sleep(0.5)
 
     except Exception as e:
         # 영상이 뒤에 끊겼는데도 영상이 계속 이어지는 경우는 일시정지 버튼 클릭 불가능
@@ -291,13 +287,11 @@ def get_vod_viewer_info(vod_id, vod_time, driver=None):
     # 채팅창 끄기
     try:        
         driver.find_element(By.CSS_SELECTOR, '#videoChatBoxClose').click()
-        time.sleep(1)
+        time.sleep(0.5)
 
     except Exception as e:
         pass
-    
-    
-    accv, pccv, chat = None, None, None
+
 
     try:
         # 방송 별별통계 클릭
@@ -314,38 +308,54 @@ def get_vod_viewer_info(vod_id, vod_time, driver=None):
                 break
 
         if target_li is None:
-            pass
+            vod_info_df.loc[0, "accv"] = "데이터 없음"
+            vod_info_df.loc[0, "pccv"] = "데이터 없음"
 
         else:
 
-            time.sleep(1)
+            time.sleep(0.5)
             target_li.click()
-            time.sleep(1)
+            WebDriverWait(driver, timeout=10).until(lambda x: x.find_element(By.CSS_SELECTOR, "#highcharts-6 > svg > g.highcharts-series-group > g.highcharts-series"))
 
-            # PCCV
-            a = ActionChains(driver)
-            peak = driver.find_element(By.CSS_SELECTOR, 'g.highcharts-series-group > g.highcharts-markers.highcharts-tracker > path:nth-child(1)')
+            # 별별통계 데이터가 존재하지 않는 경우
+            if driver.find_element(By.CSS_SELECTOR, "#star2statAlert > div.pop-body").text == "해당 데이터가 존재하지 않습니다.":
+                print("별별통계 데이터 없음")
+                
+                vod_info_df.loc[0, "accv"] = "데이터 없음"
+                vod_info_df.loc[0, "pccv"] = "데이터 없음"  
 
-            a.move_to_element(peak).perform()
-            time.sleep(1)
-            a.move_to_element(peak).perform()
-            tooltip = driver.find_element(By.CSS_SELECTOR, 'g.highcharts-tooltip')
-            pccv = int(tooltip.text.split("명")[0].replace(",", ""))
-            
-            # CCV
-            data = driver.find_element(By.CSS_SELECTOR, 'svg > g.highcharts-series-group > g.highcharts-series > path:nth-child(1)').get_attribute("d")
-            y_range = float(data.split(" L ")[0].split()[-1])
-            cleansed_data = data.split(" L ")[1:-1]
-            df = pd.DataFrame({'data':cleansed_data})
-            df['x'] = df['data'].apply(lambda x: float(x.split()[0]))
-            df['y'] = df['data'].apply(lambda x: y_range - float(x.split()[1]))
-            y_max = max(df['y'])
+                driver.find_element(By.CSS_SELECTOR, "#star2statAlert > div.pop-btn.line > a").click()
+                time.sleep(0.5)
 
-            df['ccv'] = df['y'].apply(lambda x: int(x*pccv/y_max))
-            accv = int(df['ccv'].mean())
-            time.sleep(3)
+            else:
+
+                # PCCV
+                a = ActionChains(driver)
+                peak = driver.find_element(By.CSS_SELECTOR, 'g.highcharts-series-group > g.highcharts-markers.highcharts-tracker > path:nth-child(1)')
+
+                a.move_to_element(peak).perform()
+                time.sleep(0.5)
+                a.move_to_element(peak).perform()
+                tooltip = driver.find_element(By.CSS_SELECTOR, 'g.highcharts-tooltip')
+                vod_info_df.loc[0, "pccv"] = int(tooltip.text.split("명")[0].replace(",", ""))
+                
+                # CCV
+                data = driver.find_element(By.CSS_SELECTOR, 'svg > g.highcharts-series-group > g.highcharts-series > path:nth-child(1)').get_attribute("d")
+                y_range = float(data.split(" L ")[0].split()[-1])
+                cleansed_data = data.split(" L ")[1:-1]
+                df = pd.DataFrame({'data':cleansed_data})
+                df['x'] = df['data'].apply(lambda x: float(x.split()[0]))
+                df['y'] = df['data'].apply(lambda x: y_range - float(x.split()[1]))
+                y_max = max(df['y'])
+
+                df['ccv'] = df['y'].apply(lambda x: int(x*vod_info_df.loc[0, "pccv"]/y_max))
+                vod_info_df.loc[0, "accv"] = int(df['ccv'].mean())
+                time.sleep(1)
 
     except Exception as e:
+        adballoon_bubble = driver.find_elements(By.CSS_SELECTOR, '#player_area > div.htmlplayer_wrap > div > div.player_item_list.playbackrate.pip.statistics > ul > li.adballoon > div.speech_bubble')
+        if len(adballoon_bubble) > 0 and adballoon_bubble[0].get_attribute("style") == 'display: block;':
+            driver.find_element(By.CSS_SELECTOR, '#player_area > div.htmlplayer_wrap > div > div.player_item_list.playbackrate.pip.statistics > ul > li.adballoon > div.speech_bubble > a').click()
         print(e)
 
 
@@ -356,41 +366,67 @@ def get_vod_viewer_info(vod_id, vod_time, driver=None):
                 break
 
         if target_li is None:
-            pass
-        
+            vod_info_df.loc[0, "chat"] = "데이터 없음"
+
         else:
-            time.sleep(1)
+            time.sleep(0.5)
             target_li.click()
             time.sleep(1)
 
-            # max_chat
-            a = ActionChains(driver)
-            peak = driver.find_element(By.CSS_SELECTOR, 'g.highcharts-series-group > g.highcharts-markers.highcharts-tracker > path:nth-child(1)')
+            # 별별통계 데이터가 존재하지 않는 경우
+            if driver.find_element(By.CSS_SELECTOR, "#star2statAlert > div.pop-body").text == "해당 데이터가 존재하지 않습니다.":
+                
+                vod_info_df.loc[0, "chat"] = "데이터 없음"
 
-            a.move_to_element(peak).perform()
-            time.sleep(1)
-            a.move_to_element(peak).perform()
-            tooltip = driver.find_element(By.CSS_SELECTOR, 'g.highcharts-tooltip')
-            max_chat = int(tooltip.text.split("채팅 ")[1].split("개")[0].replace(",", ""))
+                driver.find_element(By.CSS_SELECTOR, "#star2statAlert > div.pop-btn.line > a").click()
+                time.sleep(0.5)
 
-            
-            # chat
-            data = driver.find_element(By.CSS_SELECTOR, 'svg > g.highcharts-series-group > g.highcharts-series > path:nth-child(1)').get_attribute("d")
-            y_range = float(data.split(" L ")[0].split()[-1])
-            cleansed_data = data.split(" L ")[1:-1]
-            chat_df = pd.DataFrame({'data':cleansed_data})
-            chat_df['x'] = chat_df['data'].apply(lambda x: float(x.split()[0]))
-            chat_df['y'] = chat_df['data'].apply(lambda x: y_range - float(x.split()[1]))
-            y_max = max(chat_df['y'])
+            else:
 
-            chat_df['chat'] = chat_df['y'].apply(lambda x: int(x*max_chat/y_max))
+                # max_chat
+                a = ActionChains(driver)
+                peak = driver.find_element(By.CSS_SELECTOR, 'g.highcharts-series-group > g.highcharts-markers.highcharts-tracker > path:nth-child(1)')
 
-            chat = int(chat_df['chat'].sum())
+                a.move_to_element(peak).perform()
+                time.sleep(0.5)
+                a.move_to_element(peak).perform()
+                tooltip = driver.find_element(By.CSS_SELECTOR, 'g.highcharts-tooltip')
+                
+                if "명" in tooltip.text:
+                    time.sleep(5)
+                    a = ActionChains(driver)
+                    peak = driver.find_element(By.CSS_SELECTOR, 'g.highcharts-series-group > g.highcharts-markers.highcharts-tracker > path:nth-child(1)')
 
+                    a.move_to_element(peak).perform()
+                    time.sleep(0.5)
+                    a.move_to_element(peak).perform()
+                    tooltip = driver.find_element(By.CSS_SELECTOR, 'g.highcharts-tooltip')
+
+                max_chat = int(tooltip.text.split("채팅 ")[1].split("개")[0].replace(",", ""))
+
+                # chat
+                data = driver.find_element(By.CSS_SELECTOR, 'svg > g.highcharts-series-group > g.highcharts-series > path:nth-child(1)').get_attribute("d")
+                y_range = float(data.split(" L ")[0].split()[-1])
+                cleansed_data = data.split(" L ")[1:-1]
+                chat_df = pd.DataFrame({'data':cleansed_data})
+                chat_df['x'] = chat_df['data'].apply(lambda x: float(x.split()[0]))
+                chat_df['y'] = chat_df['data'].apply(lambda x: y_range - float(x.split()[1]))
+                y_max = max(chat_df['y'])
+
+                chat_df['chat'] = chat_df['y'].apply(lambda x: int(x*max_chat/y_max))
+
+                vod_info_df.loc[0, "chat"] = int(chat_df['chat'].sum())
+                
     except Exception as e:
         print(e)
 
-    if need_to_close:
-        driver.close()
 
-    return accv, pccv, chat
+    # 기타 라이브 정보
+    soup = BeautifulSoup(driver.page_source, "html.parser")
+    detail_data = soup.find("ul", class_="detail_view")
+    for li in detail_data.find_all("li"):
+        tag_name = li.find("strong").text
+        tag_value = li.find("span").text
+        vod_info_df.loc[0, tag_name] = tag_value
+
+    return vod_info_df
