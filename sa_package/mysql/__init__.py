@@ -52,8 +52,6 @@ class MySQLConnection:
             data = pd.read_sql(sql, con=self.__connection)
         except Exception as e:
             print(e)
-        finally:
-            self.__connection.close()
 
         return data
 
@@ -105,10 +103,6 @@ class MySQLConnection:
             print(e)
             return False
 
-        finally:
-            self.__connection.close()
-
-
     
     def update_db(self, sql, values, option='one'):
         """
@@ -126,5 +120,5 @@ class MySQLConnection:
         except Exception as e:
             print(e)
 
-        finally:
-            self.__connection.close()
+    def close(self):
+        self.__connection.colse()
