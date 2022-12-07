@@ -171,7 +171,7 @@ class SpreadSheet:
                 "values":values
             }
             response = sheet.values().update(
-                spreadsheetId=self.get_sheet_id_id(),
+                spreadsheetId=self.get_sheet_id(),
                 range=f"{worksheet_name}!{start_cell}",
                 valueInputOption="USER_ENTERED",
                 body=request_body,
