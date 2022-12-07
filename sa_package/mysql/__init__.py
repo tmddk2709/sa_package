@@ -25,22 +25,33 @@ class MySQLConnection:
         )
 
 
-    def get_conenction(self):
+    def make_conenction(self):
+        connection = pymysql.connect(
+            host=self.__host,
+            port=self.__port,
+            user=self.__user,
+            password=self.__password,
+            db=self.__db,
+            charset='utf8mb4',
+            cursorclass=pymysql.cursors.DictCursor
+        )
 
-        return self.__connection
+        return connection
 
 
     def execute_sql(self, sql):
-
-        cursor = self.__connection.cursor()
-
+        
+        
         try:
+            connection = self.make_conenction()
+            cursor = connection.cursor()
+
             cursor.execute(sql)
-            self.__connection.commit()
+            connection.commit()
         except Exception as e:
             print(e)
         finally:
-            self.__connection.close()
+            connection.close()
 
 
     def get_data(self, sql):
@@ -49,9 +60,12 @@ class MySQLConnection:
         """
 
         try:
-            data = pd.read_sql(sql, con=self.__connection)
+            connection = self.make_conenction()
+            data = pd.read_sql(sql, con=connection)
         except Exception as e:
             print(e)
+        finally:
+            connection.close()
 
         return data
 
@@ -89,13 +103,15 @@ class MySQLConnection:
             option = 'many'
 
         try:
-            with self.__connection.cursor() as cursor:
+            connection = self.make_conenction()
+
+            with connection.cursor() as cursor:
                 if option == 'one':
                     cursor.execute(sql, values)
                 elif option == 'many':
                     cursor.executemany(sql, values)
 
-                self.__connection.commit()
+                connection.commit()
 
             return True
 
@@ -103,22 +119,26 @@ class MySQLConnection:
             print(e)
             return False
 
+        finally:
+            connection.close()
+
     
     def update_db(self, sql, values, option='one'):
         """
         update mysql database using 'sql' command
         """
+
         try:
+            connection = self.make_conenction()
+        
             with self.__connection.cursor() as cursor:
                 if option == 'one':
                     cursor.execute(sql, values)
                 elif option == 'many':
                     cursor.executemany(sql, values)
 
-                self.__connection.commit()
-
+                connection.commit()
         except Exception as e:
             print(e)
-
-    def close(self):
-        self.__connection.colse()
+        finally:
+            connection.close()
