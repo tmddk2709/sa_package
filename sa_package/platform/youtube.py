@@ -70,15 +70,29 @@ def get_video_info(video_id):
     return video_info
 
 
-def get_channel_id_from_yt_link(url):
+def get_channel_id_from_yt_link(url, link_type="video"):
 
-    req = request.Request(url)
-    data = request.urlopen(req).read()
+    channel_id = None
 
-    soup = BeautifulSoup(data, "html.parser")
 
-    main_data = soup.find(class_="watch-main-col")
-    channel_id = main_data.find("meta", itemprop="channelId")["content"]
+    if link_type == "video":
+
+        req = request.Request(url)
+        data = request.urlopen(req).read()
+
+        soup = BeautifulSoup(data, "html.parser")
+
+        main_data = soup.find(class_="watch-main-col")
+        channel_id = main_data.find("meta", itemprop="channelId")["content"]
+
+    elif link_type == "channel":
+        req = request.Request(link)
+        data = request.urlopen(req).read()
+
+        soup = BeautifulSoup(data, "html.parser")
+
+        if soup.find(rel="canonical") is not None:
+            channel_id = soup.find(rel="canonical")["href"].split("/")[-1]
 
     return channel_id
 
