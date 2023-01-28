@@ -86,7 +86,7 @@ def get_channel_id_from_yt_link(url, link_type="video"):
         channel_id = main_data.find("meta", itemprop="channelId")["content"]
 
     elif link_type == "channel":
-        req = request.Request(link)
+        req = request.Request(url)
         data = request.urlopen(req).read()
 
         soup = BeautifulSoup(data, "html.parser")
