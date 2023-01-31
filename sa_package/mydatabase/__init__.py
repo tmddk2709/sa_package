@@ -47,8 +47,10 @@ def upload_df(dbms:str, engine, df, pk_list:list, scheme:str, table:str):
     # NaN 값 처리
     copy_df.fillna("", inplace=True)
     for col in copy_df.columns:
-        if copy_df[col].dtypes in ['float64', 'int64']:
+        if copy_df[col].dtypes in ['float64', 'int64', "Int64"]:
             copy_df[col] = copy_df[col].astype(str)    
+            
+    copy_df = copy_df.replace("<NA>", "")
 
     for col in copy_df.columns:
         copy_df[col] = copy_df[col].apply(lambda x: None if x == "" else str(x))
@@ -65,7 +67,7 @@ def upload_df(dbms:str, engine, df, pk_list:list, scheme:str, table:str):
         cols = ', '.join('"{0}"'.format(c) for c in copy_df.columns)
         strings = ', '.join('%s' for i in copy_df.columns)
         pk_values = ', '.join('"{0}"'.format(c) for c in pk_list)
-        update_values = ', '.join('"{0}"=EXCLUDED.{0}'.format(c) for c in copy_df.drop(columns=pk_list).columns)
+        update_values = ', '.join('"{0}"=EXCLUDED."{0}"'.format(c) for c in copy_df.drop(columns=pk_list).columns)
         values = list(copy_df.itertuples(index=False, name=None))
 
         sql = 'INSERT INTO ' + scheme + '."' + table + '" ({0}) VALUES({1}) ON CONFLICT ({2}) DO UPDATE SET {3};'.format(cols, strings, pk_values, update_values)
