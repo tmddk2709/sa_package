@@ -33,7 +33,7 @@ class AfreecaTVDriver(MyChromeDriver):
         if self.__login_id is not None:
             self.login(self.__login_id, self.__login_pwd)
 
-        self.setting()
+        # self.setting()
 
         self.to_home()
 
@@ -71,42 +71,48 @@ class AfreecaTVDriver(MyChromeDriver):
 
         sample_vod_url = "https://vod.afreecatv.com/player/93937795"
         self.get(sample_vod_url)
-        self.find_element(By.XPATH, '//*[@id="afreecatv_player"]/div[21]/dl/dd[2]/a').click()
-
-        # 자동재생 설정
-        if self.__kwargs.get("autoplay", "OFF") == "OFF":
-            try:
-                if self.find_element(By.CSS_SELECTOR, '#autoplay').get_attribute("checked") == 'true':
-                    self.find_element(By.XPATH, '//*[@id="playlistP"]/dt/label/span').click()
-                    time.sleep(0.5)
-            except Exception as e:
-                pass
-
-        # 리스트 지우기
-        if self.__kwargs.get("vodlist", "OFF") == "OFF":
-            try:
-                self.find_element(By.CSS_SELECTOR, '#list_area > div.area_header > ul:nth-child(2) > li.close > a').click()
-                time.sleep(0.5)
-            except Exception as e:
-                pass
-
+        time.sleep(3)
+        
         # 애드벌룬 광고창 지우기
         try:
-            if self.find_element(By.CSS_SELECTOR, '#player_area > div.htmlplayer_wrap > div > div.player_item_list.playbackrate.pip.statistics > ul > li.adballoon > div.speech_bubble').get_attribute("style") == 'display: block;':
-                self.find_element(By.CSS_SELECTOR, '#player_area > div.htmlplayer_wrap > div > div.player_item_list.playbackrate.pip.statistics > ul > li.adballoon > div.speech_bubble > a').click()
+            if self.find_element(By.CSS_SELECTOR, '#player_area > div.htmlplayer_wrap > div > div.player_item_list.playbackrate.pip.statistics.smallest > ul > li.adballoon > div.speech_bubble').get_attribute("style") == 'display: block;':
+                self.find_element(By.CSS_SELECTOR, '#player_area > div.htmlplayer_wrap > div > div.player_item_list.playbackrate.pip.statistics.smallest > ul > li.adballoon > div.speech_bubble > a').click()
                 time.sleep(0.5)
         except Exception as e:
             pass
 
-        # 스크린모드 설정하기
-        if self.__kwargs.get("vodlist", "ON") == "ON":
-            try:
-                # 스크린모드
-                self.find_element(By.CSS_SELECTOR, '#rightCtrl > button.btn_smode').click()
-                time.sleep(1)
 
-            except Exception as e:
-                pass
+        self.find_element(By.CSS_SELECTOR, '#afreecatv_player > div.nextvideo > dl > dd.nextplay > a').click()
+
+        # 자동재생 설정
+        # if self.__kwargs.get("autoplay", "OFF") == "OFF":
+        # try:
+        #     if self.find_element(By.CSS_SELECTOR, '#autoplay').get_attribute("checked") == 'true':
+        #         self.find_element(By.XPATH, '//*[@id="playlistP"]/dt/label/span').click()
+        #         time.sleep(0.5)
+        # except Exception as e:
+        #     pass
+
+        # 리스트 지우기
+        # if self.__kwargs.get("vodlist", "OFF") == "OFF":
+        # try:
+        #     self.find_element(By.CSS_SELECTOR, '#list_area > div.area_header > ul:nth-child(2) > li.close > a').click()
+        #     time.sleep(0.5)
+        # except Exception as e:
+        #     pass
+
+        
+
+        # 스크린모드 설정하기
+        try:
+            # 스크린모드
+            screenmode_button = self.find_element(By.CSS_SELECTOR, '#btnSmode')
+            a = ActionChains(self)
+            a.move_to_element(screenmode_button).perform()
+            screenmode_button.click()
+
+        except Exception as e:
+            pass
 
 
 
@@ -254,27 +260,30 @@ def get_vod_viewer_info(vod_id, vod_time, driver=None):
 
     # 재생버튼 클릭
     try:
-        driver.find_element(By.XPATH, '//*[@id="afreecatv_player"]/div[21]/dl/dd[2]/a').click()
+        time.sleep(3)
+        driver.find_element(By.CSS_SELECTOR, '#afreecatv_player > div.nextvideo > dl > dd.nextplay > a').click()
         time.sleep(1)
     except Exception as e:
         pass
 
+
     # 광고 나오고 있는 경우 skip 버튼 기다려서 skip 버튼 누르기
-    if driver.find_element(By.CSS_SELECTOR, '#da_area_id').get_attribute("style") == "":
+    # if driver.find_element(By.CSS_SELECTOR, '#da_area_id').get_attribute("style") == "":
 
-        skip_button = driver.find_element(By.CSS_SELECTOR, '#afreecatv_player > button.da_area_right')
-        skip_text = skip_button.text
+    #     skip_button = driver.find_element(By.CSS_SELECTOR, '#afreecatv_player > button.da_area_right')
+    #     skip_text = skip_button.text
 
-        if "초 후" in skip_text:
-            skip_sec = int(skip_text.split("초")[0])+2
-        else:
-            skip_sec = 2
+    #     if "초 후" in skip_text:
+    #         skip_sec = int(skip_text.split("초")[0])+2
+    #     else:
+    #         skip_sec = 2
 
-        try:
-            time.sleep(skip_sec)
-            skip_button.click()
-        except Exception as e:
-            time.sleep(15)
+    #     try:
+    #         time.sleep(skip_sec)
+    #         skip_button.click()
+    #     except Exception as e:
+    #         time.sleep(15)
+
 
     # 일시정지
     try:
@@ -287,29 +296,55 @@ def get_vod_viewer_info(vod_id, vod_time, driver=None):
         pass
 
 
-    # 채팅창 끄기
-    try:        
-        driver.find_element(By.CSS_SELECTOR, '#videoChatBoxClose').click()
+    # 리스트 끄기
+    try:
+        driver.find_element(By.CSS_SELECTOR, '#list_area > div.area_header > ul > li.close > a').click()
         time.sleep(0.5)
 
     except Exception as e:
         pass
 
+    # 채팅창 끄기
+    try:        
+        driver.find_element(By.CSS_SELECTOR, '#chatting_area > div > div.area_header > ul > li.close > a').click()
+        time.sleep(0.5)
+
+    except Exception as e:
+        pass
+
+    # 애드벌룬 있는 경우 끄기
+    try:
+        if driver.find_element(By.CSS_SELECTOR, '#player_area > div.htmlplayer_wrap > div > div.player_item_list.playbackrate.pip.statistics.smallest > ul > li.adballoon > div.speech_bubble').get_attribute("style") == 'display: block;':
+            driver.find_element(By.CSS_SELECTOR, '#player_area > div.htmlplayer_wrap > div > div.player_item_list.playbackrate.pip.statistics.smallest > ul > li.adballoon > div.speech_bubble > a').click()
+            time.sleep(0.5)
+    except Exception as e:
+        pass
+    
+    # try:
+    #     # 스크린모드
+    #     screenmode_button = driver.find_element(By.CSS_SELECTOR, '#btnSmode')
+    #     a = ActionChains(driver)
+    #     a.move_to_element(screenmode_button).perform()
+    #     screenmode_button.click()
+
+    # except Exception as e:
+    #     pass
+
 
     try:
         # 방송 별별통계 클릭
-        star_stat_button = driver.find_element(By.CSS_SELECTOR, '#rightCtrl > button.btn_statistics.controlBtn')
+        star_stat_button = driver.find_element(By.CSS_SELECTOR, '.btn_statistics')
         a = ActionChains(driver)
         a.move_to_element(star_stat_button).perform() # 아래 메뉴 나오도록 호버링
         star_stat_button.click()
         time.sleep(1)
 
         target_li = None
-        for li_idx, li in enumerate(driver.find_elements(By.CSS_SELECTOR, '#star2StatList > ul > li')):
-            if li.find_element(By.CSS_SELECTOR, 'button').get_attribute('data-name') == 'BjViewCnt':
+        for li_idx, li in enumerate(driver.find_elements(By.CSS_SELECTOR, '.statistics_list_contents > ul > li')):
+            if li.find_element(By.CSS_SELECTOR, 'button').text == '유저 수 그래프':
                 target_li = li
                 break
-
+            
         if target_li is None:
             vod_info_df.loc[0, "accv"] = "데이터 없음"
             vod_info_df.loc[0, "pccv"] = "데이터 없음"
@@ -318,19 +353,22 @@ def get_vod_viewer_info(vod_id, vod_time, driver=None):
 
             time.sleep(0.5)
             target_li.click()
-            WebDriverWait(driver, timeout=10).until(lambda x: x.find_element(By.CSS_SELECTOR, "#highcharts-6 > svg > g.highcharts-series-group > g.highcharts-series"))
+            time.sleep(1)
 
             # 별별통계 데이터가 존재하지 않는 경우
-            if driver.find_element(By.CSS_SELECTOR, "#star2statAlert > div.pop-body").text == "해당 데이터가 존재하지 않습니다.":
-                print("별별통계 데이터 없음")
+            if len(driver.find_elements(By.CSS_SELECTOR, ".ui-pop.statistics_layer > div.pop-body")) > 0:
+                if driver.find_element(By.CSS_SELECTOR, ".ui-pop.statistics_layer > div.pop-body").text == "해당 데이터가 존재하지 않습니다.":
+                    print("별별통계 데이터 없음")
                 
-                vod_info_df.loc[0, "accv"] = "데이터 없음"
-                vod_info_df.loc[0, "pccv"] = "데이터 없음"  
+                    vod_info_df.loc[0, "accv"] = "데이터 없음"
+                    vod_info_df.loc[0, "pccv"] = "데이터 없음"
 
-                driver.find_element(By.CSS_SELECTOR, "#star2statAlert > div.pop-btn.line > a").click()
-                time.sleep(0.5)
+                    driver.find_element(By.CSS_SELECTOR, "#star2statAlert > div.pop-btn.line > a").click()
+                    time.sleep(0.5)
 
             else:
+                
+                WebDriverWait(driver, timeout=10).until(lambda x: x.find_element(By.CSS_SELECTOR, "g.highcharts-series-group > g.highcharts-series"))
 
                 # PCCV
                 a = ActionChains(driver)
@@ -363,8 +401,8 @@ def get_vod_viewer_info(vod_id, vod_time, driver=None):
 
 
     try:
-        for li_idx, li in enumerate(driver.find_elements(By.CSS_SELECTOR, '#star2StatList > ul > li')):
-            if li.find_element(By.CSS_SELECTOR, 'button').get_attribute('data-name') == 'BjChatCnt':
+        for li_idx, li in enumerate(driver.find_elements(By.CSS_SELECTOR, '.statistics_list_contents > ul > li')):
+            if li.find_element(By.CSS_SELECTOR, 'button').text == '채팅 수 그래프':
                 target_li = li
                 break
 
@@ -377,14 +415,18 @@ def get_vod_viewer_info(vod_id, vod_time, driver=None):
             time.sleep(1)
 
             # 별별통계 데이터가 존재하지 않는 경우
-            if driver.find_element(By.CSS_SELECTOR, "#star2statAlert > div.pop-body").text == "해당 데이터가 존재하지 않습니다.":
+            if len(driver.find_elements(By.CSS_SELECTOR, ".ui-pop.statistics_layer > div.pop-body")) > 0:
+                if driver.find_element(By.CSS_SELECTOR, ".ui-pop.statistics_layer > div.pop-body").text == "해당 데이터가 존재하지 않습니다.":
+                    print("별별통계 데이터 없음")
                 
-                vod_info_df.loc[0, "chat"] = "데이터 없음"
+                    vod_info_df.loc[0, "chat"] = "데이터 없음"
 
-                driver.find_element(By.CSS_SELECTOR, "#star2statAlert > div.pop-btn.line > a").click()
-                time.sleep(0.5)
+                    driver.find_element(By.CSS_SELECTOR, "#star2statAlert > div.pop-btn.line > a").click()
+                    time.sleep(0.5)
 
             else:
+                
+                WebDriverWait(driver, timeout=10).until(lambda x: x.find_element(By.CSS_SELECTOR, "g.highcharts-series-group > g.highcharts-series"))
 
                 # max_chat
                 a = ActionChains(driver)
@@ -425,11 +467,20 @@ def get_vod_viewer_info(vod_id, vod_time, driver=None):
 
 
     # 기타 라이브 정보
-    soup = BeautifulSoup(driver.page_source, "html.parser")
-    detail_data = soup.find("ul", class_="detail_view")
-    for li in detail_data.find_all("li"):
-        tag_name = li.find("strong").text
-        tag_value = li.find("span").text
-        vod_info_df.loc[0, tag_name] = tag_value
+    try:
+        driver.find_element(By.CSS_SELECTOR, 'div.broadcast_information > div.text_information > button').click()
+        time.sleep(0.5)
+
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        detail_data = soup.find("ul", class_="detail_view")
+        for li in detail_data.find_all("li"):
+            tag_name = li.find("strong").text
+            tag_value = li.find("span").text
+            vod_info_df.loc[0, tag_name] = tag_value
+
+    except Exception as e:
+        vod_info_df.loc[0, "방송시간"] = ""
+        vod_info_df.loc[0, "카테고리"] = ""
+        print(e)
 
     return vod_info_df
