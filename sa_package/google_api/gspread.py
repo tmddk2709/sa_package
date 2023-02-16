@@ -1,12 +1,17 @@
+from __future__ import annotations
+
 import re
+import json
 import gspread
 import pandas as pd
 
 from gspread.exceptions import APIError, WorksheetNotFound
 
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError as GoogleApiHttpError
+
 from oauth2client.service_account import ServiceAccountCredentials
-from urllib.error import HTTPError
+
 
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
@@ -62,6 +67,24 @@ class SpreadSheet:
         return self.__spreadsheet
 
 
+    def worksheet_exists(self, worksheet_name:str) -> bool|None:
+
+        """
+        check whether a worksheet exists or not with the worksheet name
+        """
+
+        try:
+            _ = self.__spreadsheet.worksheet(worksheet_name)
+            return True
+        
+        except WorksheetNotFound:
+            return False
+        
+        except Exception as e:
+            print(e)
+            return None
+
+
     def get_worksheet(self, worksheet_name, if_not_exist:str="fail"):
         """
         구글 스프레드시트 워크시트 이름으로 워크시트 불러오기
@@ -80,27 +103,20 @@ class SpreadSheet:
 
         assert if_not_exist in ["create", "fail"], "if_not_exist에 잘못된 값 입력 / create, fail 중 하나로 입력해주세요"
 
-        try:
-            worksheet = self.__spreadsheet.worksheet(worksheet_name)
-            
         # 시트가 없는 경우
-        except WorksheetNotFound:
+        if not self.worksheet_exists(worksheet_name=worksheet_name):
+            
+            print(f"{self.get_worksheet.__qualname__} 실패 :: <{worksheet_name}> 이름의 시트가 존재하지 않습니다")
 
             if if_not_exist == "fail":
-                print(f"<{worksheet_name}> 이름의 시트가 존재하지 않습니다")
-                worksheet = None
+                return None
             
+            # 새로 워크시트 생성
             else:
-                print(f"<{worksheet_name}> 이름의 시트가 존재하지 않습니다")
-
                 _ = self.create_worksheet(worksheet_name)
-                worksheet = self.__spreadsheet.worksheet(worksheet_name)
+        
 
-        except Exception as e:
-            print(e)
-            worksheet = None
-
-        return worksheet
+        return self.__spreadsheet.worksheet(worksheet_name)
 
 
 
@@ -108,143 +124,199 @@ class SpreadSheet:
         """
         새 워크시트 만들기
         """
-        try:
-            service = build("sheets", "v4", credentials=self.get_creds())
-            request_body = {
-                "requests": [{
-                    "addSheet": {
-                        "properties": {
-                            "title": worksheet_name,
-                        }
+
+        if self.worksheet_exists(worksheet_name=worksheet_name):
+            print(f"{self.create_worksheet.__qualname__} 실패 :: <{worksheet_name}> 이름의 시트가 이미 존재합니다")
+            return None
+
+
+        service = build("sheets", "v4", credentials=self.get_creds())
+        request_body = {
+            "requests": [{
+                "addSheet": {
+                    "properties": {
+                        "title": worksheet_name,
                     }
-                }]
-            }
+                }
+            }]
+        }
 
-            sheet = service.spreadsheets()
-            response = sheet.batchUpdate(
-                spreadsheetId=self.get_sheet_id(),
-                body=request_body
-            ).execute()
+        sheet = service.spreadsheets()
+        response = sheet.batchUpdate(
+            spreadsheetId=self.get_sheet_id(),
+            body=request_body
+        ).execute()
 
-            print(f"시트 <{worksheet_name}>가 생성되었습니다")
-            return response
+        return response
 
-        except Exception as e:
-            print(e)
 
 
     def duplicate_worksheet(self, worksheet_name, dup_sheet_name):
         """
         기존 워크시트 복제하기
         """
+        
+        # 복제할 시트가 없는 경우
+        if not self.worksheet_exists(worksheet_name=dup_sheet_name):
+        
+            print(f"{self.duplicate_worksheet.__qualname__} 실패 :: <{dup_sheet_name}> 이름의 시트가 존재하지 않습니다")
+            return None
+        
+        # 결과 시트 이름이 이미존재하는 경우
+        if self.worksheet_exists(worksheet_name=worksheet_name):
 
-        try:
-            dup_worksheet = self.get_worksheet(dup_sheet_name)
+            print(f"{self.duplicate_worksheet.__qualname__} 실패 :: <{worksheet_name}> 이름의 시트가 이미 존재합니다")
+            return None
 
-            service = build("sheets", "v4", credentials=self.get_creds())
-            request_body = {
-                "requests": [{
-                    "duplicateSheet": {
-                        "sourceSheetId": dup_worksheet.id,
-                        "newSheetName": worksheet_name,
-                    }
-                }]
-            }
 
-            sheet = service.spreadsheets()
-            response = sheet.batchUpdate(
-                spreadsheetId=self.get_sheet_id(),
-                body=request_body
-            ).execute()
-            return response
+        dup_worksheet = self.get_worksheet(worksheet_name=dup_sheet_name)
 
-        except Exception as e:
-            print(e)
+        service = build("sheets", "v4", credentials=self.get_creds())
+        request_body = {
+            "requests": [{
+                "duplicateSheet": {
+                    "sourceSheetId": dup_worksheet.id,
+                    "newSheetName": worksheet_name,
+                }
+            }]
+        }
+
+    
+        sheet = service.spreadsheets()
+        response = sheet.batchUpdate(
+            spreadsheetId=self.get_sheet_id(),
+            body=request_body
+        ).execute()
+
+        return response
+
 
 
     def delete_worksheet(self, worksheet_name):
+
+        if not self.worksheet_exists(worksheet_name=worksheet_name):
+            print(f"{self.delete_worksheet.__qualname__} 실패 :: <{worksheet_name}> 이름의 시트가 존재하지 않습니다")
+            return None
         
-        try:
-            worksheet = self.get_worksheet(worksheet_name)
 
-            service = build("sheets", "v4", credentials=self.get_creds())
-            request_body = {
-                "requests": [{
-                    "deleteSheet": {
-                        "sheetId": worksheet.id
-                    }
-                }]
-            }
+        worksheet = self.get_worksheet(worksheet_name)
 
-            sheet = service.spreadsheets()
-            response = sheet.batchUpdate(
-                spreadsheetId=self.get_sheet_id(),
-                body=request_body,
-            ).execute()
-            return response
+        service = build("sheets", "v4", credentials=self.get_creds())
+        request_body = {
+            "requests": [{
+                "deleteSheet": {
+                    "sheetId": worksheet.id
+                }
+            }]
+        }
 
-        except Exception as e:
-            print(e)
+        sheet = service.spreadsheets()
+        response = sheet.batchUpdate(
+            spreadsheetId=self.get_sheet_id(),
+            body=request_body,
+        ).execute()
+
+        return response
+
 
     
     def update_worksheet_properties(self, worksheet_name, properties):
         """
         워크시트 속성 변경하기
         """
-        try:
-            worksheet = self.get_worksheet(worksheet_name)
 
-            service = build("sheets", "v4", credentials=self.get_creds())
-            properties.update({
-                "sheetId": worksheet.id
-            })
-
-            request_body = {
-                "requests": [{
-                    "updateSheetProperties": {
-                        "properties": properties,
-                        'fields': (",").join(list(properties.keys()))
-                    }
-                }]
-            }
-
-            sheet = service.spreadsheets()
-            response = sheet.batchUpdate(
-                spreadsheetId=self.get_sheet_id(),
-                body=request_body,
-            ).execute()
-            return response
-
-        except Exception as e:
-            print(e)
+        if not self.worksheet_exists(worksheet_name=worksheet_name):
+            print(f"{self.update_worksheet_properties.__qualname__} 실패 :: <{worksheet_name}> 이름의 시트가 존재하지 않습니다")
+            return None
 
 
-    def write_values_to_sh(self, values, worksheet_name, start_cell):
+        worksheet = self.get_worksheet(worksheet_name)
 
-        try:
-            service = build("sheets", "v4", credentials=self.get_creds())
-            sheet = service.spreadsheets()
+        service = build("sheets", "v4", credentials=self.get_creds())
+        properties.update({
+            "sheetId": worksheet.id
+        })
 
-            request_body = {
-                "values":values
-            }
-            response = sheet.values().update(
-                spreadsheetId=self.get_sheet_id(),
-                range=f"{worksheet_name}!{start_cell}",
-                valueInputOption="USER_ENTERED",
-                body=request_body,
-            ).execute()
+        request_body = {
+            "requests": [{
+                "updateSheetProperties": {
+                    "properties": properties,
+                    'fields': (",").join(list(properties.keys()))
+                }
+            }]
+        }
 
-            return response
+        sheet = service.spreadsheets()
+        response = sheet.batchUpdate(
+            spreadsheetId=self.get_sheet_id(),
+            body=request_body,
+        ).execute()
 
-        except Exception as e:
-            print(e)
+        return response
+    
 
 
-    def write_df_to_sh(self, df, worksheet_name, include_header=False, start_cell=None, date_columns=[], datetime_columns=[], to_str_columns=[]):
+    def write_values_to_sh(self, values, worksheet_name:str, start_cell:str, if_not_exist:str="fail"):
+
+        """
+        Parameter
+        ----------
+        
+        if_not_exist: {"create", "fail"}
+
+            How to behave if the worksheet named 'worksheet_name' is not exist
+            - create : create a new worksheet named 'worksheet_name' and write values to it
+            - fail : raise a ValueError
+            default value is "fail"
+        """
+
+        assert if_not_exist in ["create", "fail"], "if_not_exist에 잘못된 값 입력 / create, fail 중 하나로 입력해주세요"
+
+        if not self.worksheet_exists(worksheet_name=worksheet_name):
+
+            if if_not_exist == "fail":
+                print(f"{self.write_values_to_sh.__qualname__} 실패 :: <{worksheet_name}> 이름의 시트가 존재하지 않습니다")
+                return None
+            
+            else:
+                
+                print(f"<{worksheet_name}> 이름의 시트가 존재하지 않습니다")
+                self.create_worksheet(worksheet_name=worksheet_name)
+                print(f"<{worksheet_name}> 시트 생성 완료")
+        
+
+
+        service = build("sheets", "v4", credentials=self.get_creds())
+        sheet = service.spreadsheets()
+
+        request_body = {
+            "values":values
+        }
+        response = sheet.values().update(
+            spreadsheetId=self.get_sheet_id(),
+            range=f"{worksheet_name}!{start_cell}",
+            valueInputOption="USER_ENTERED",
+            body=request_body,
+        ).execute()
+
+        return response
+
+
+
+    def write_df_to_sh(self, df, worksheet_name, include_header=False, start_cell=None, date_columns=[], datetime_columns=[], to_str_columns=[], if_not_exist:str="fail"):
         """
         write data to worksheet of which name is "worksheet_name"
         데이터 프레임 구글 시트에 기록하기
+
+        Parameter
+        ----------
+        
+        if_not_exist: {"create", "fail"}
+
+            How to behave if the worksheet named 'worksheet_name' is not exist
+            - create : create a new worksheet named 'worksheet_name' and write values to it
+            - fail : raise a ValueError
+            default value is "fail"
         """
 
         df = df.fillna("")
@@ -269,53 +341,63 @@ class SpreadSheet:
                 if start_cell is None:
                     start_cell = "A2"
 
-            response = self.write_values_to_sh(values, worksheet_name, start_cell)
+            response = self.write_values_to_sh(values, worksheet_name, start_cell, if_not_exist=if_not_exist)
             return response
 
         except Exception as e:
             print(e)
 
 
-    def clear_values(self, worksheet_name, clear_range):
 
-        try:
-            service = build("sheets", "v4", credentials=self.get_creds())
-            sheet = service.spreadsheets()
-        except Exception as e:
-            print(e)
+    def clear_values(self, worksheet_name:str, clear_range:str):
 
-        try:
-            response = sheet.values().clear(spreadsheetId=self.get_sheet_id(), range=f"{worksheet_name}!{clear_range}").execute()
-            return response
-        except Exception as e:
-            print(e)
+        if not self.worksheet_exists(worksheet_name=worksheet_name):
 
-
-    def get_df_from_gspread(self, worksheet_name, read_range, header=None):
-
-        try:
-            service = build("sheets", "v4", credentials=self.get_creds())
-            sheet = service.spreadsheets()
-
-            response = sheet.values().get(
-                spreadsheetId=self.get_sheet_id(),
-                range=f"{worksheet_name}!{read_range}"
-            ).execute()
-            values = response.get("values", [])
-
-            if not values:
-                print("No data found.")
-                return None
-
-            if header is None:
-                df = pd.DataFrame(columns=values[0], data=values[1:])
-            else:
-                df = pd.DataFrame(columns=header, data=values)
-            return df
-
-        except Exception as e:
-            print(e)
+            print(f"{self.clear_values.__qualname__} 실패 :: <{worksheet_name}> 이름의 시트가 존재하지 않습니다")
             return None
+        
+        service = build("sheets", "v4", credentials=self.get_creds())
+        sheet = service.spreadsheets()
+
+        response = sheet.values().clear(
+            spreadsheetId=self.get_sheet_id(), 
+            range=f"{worksheet_name}!{clear_range}"
+            ).execute()
+        
+        return response
+        
+
+
+    def get_df_from_gspread(self, worksheet_name:str, read_range:str, header:list=None):
+
+        if not self.worksheet_exists(worksheet_name=worksheet_name):
+
+            print(f"{self.get_df_from_gspread.__qualname__} 실패 :: <{worksheet_name}> 이름의 시트가 존재하지 않습니다")
+            return None
+        
+
+        service = build("sheets", "v4", credentials=self.get_creds())
+        sheet = service.spreadsheets()
+
+        response = sheet.values().get(
+            spreadsheetId=self.get_sheet_id(),
+            range=f"{worksheet_name}!{read_range}"
+        ).execute()
+        values = response.get("values", [])
+
+
+        if not values:
+            print("데이터가 존재하지 않습니다")
+            return None
+
+        if header is None:
+            df = pd.DataFrame(columns=values[0], data=values[1:])
+        else:
+            df = pd.DataFrame(columns=header, data=values)
+
+        return df
+
+
 
 
 def convert_column_alphabet_to_num(col_alphabet):
@@ -352,3 +434,15 @@ def convert_alphabet_range_to_num_index(alphabet_range):
 
     return start_col, start_row, end_col, end_row
 
+
+
+if __name__ == "__main__":
+
+    test_sheet = GspreadConnection(key_path="C:/Users/SANDBOX/sandbox_workspace/sandbox_gaming_datamanagement/key.json").get_spreadsheet(sh_id="1e5l6atYLdjObnK6quVbHRsMoUveIZsoISYOzpbLACGa")
+    # test_sheet.get_worksheet(worksheet_name="시트3", if_not_exist="create")
+    # test_sheet.duplicate_worksheet(worksheet_name="시트5", dup_sheet_name="시트3")
+    # test_sheet.create_worksheet(worksheet_name="시트5")
+    # test_sheet.delete_worksheet(worksheet_name="ejaf;e")
+    test_sheet.write_values_to_sh(values=[["hi"]], worksheet_name="맩덜", start_cell="B1", if_not_exist="create")
+    test_sheet.write_df_to_sh(df=pd.DataFrame(), worksheet_name="ㅇ러댜", if_not_exist="create")
+    test_sheet.get_df_from_gspread(worksheet_name="ㅋㅋ", read_range="A1:F")
