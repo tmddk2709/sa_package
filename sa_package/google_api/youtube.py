@@ -1,6 +1,7 @@
 import datetime
 import pandas as pd
 from googleapiclient.discovery import build
+from sa_package.convert.time_format import convert_iso_8859_to_sec
 
 YOUTUBE_API_SERVICE_NAME = "youtube"
 YOUTUBE_API_VERSION = "v3"
@@ -14,6 +15,10 @@ class YoutubeApi:
             developerKey=api_key
         )
 
+
+    def get_build(self):
+        return self.__youtube
+    
 
     def get_channel_detail(self, channel_id):
 
@@ -81,10 +86,14 @@ class YoutubeApi:
 
 
 
-    def get_video_detail(self, video_id):
+    def get_video_detail(self, video_id:str) -> dict:
+        """
+        return dict
+            'title', 'upload_date', 'channel_id', 'channel_name', 'length'
+        """
 
         search_response = self.__youtube.videos().list(
-            part="id, snippet",
+            part="id, snippet, contentDetails",
             id=video_id,
         ).execute()
 
@@ -97,5 +106,7 @@ class YoutubeApi:
                 title = item["snippet"]["title"]
                 upload_date = datetime.datetime.strptime(item["snippet"]["publishedAt"], "%Y-%m-%dT%H:%M:%SZ")
                 channel_id = item["snippet"]["channelId"]
+                channel_name = item["snippet"]["channelTitle"]
+                length = convert_iso_8859_to_sec(item["contentDetails"]["duration"])
 
-        return {'title': title, 'upload_date': upload_date, 'channel_id': channel_id}
+        return {'title': title, 'upload_date': upload_date, 'channel_id': channel_id, 'channel_name':channel_name, 'length':length}
