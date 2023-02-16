@@ -71,7 +71,10 @@ def upload_df(dbms:str, engine, df, pk_list:list, scheme:str, table:str):
         values = list(copy_df.itertuples(index=False, name=None))
 
         sql = 'INSERT INTO ' + scheme + '."' + table + '" ({0}) VALUES({1}) ON CONFLICT ({2}) DO UPDATE SET {3};'.format(cols, strings, pk_values, update_values)
-        
+    
+    else:
+        raise ValueError("dbms 명이 잘못되었습니다")
+
     try:
         with engine.connect() as connection:
             connection.execute(sql, values)
