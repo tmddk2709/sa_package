@@ -1,10 +1,15 @@
 import re
 import gspread
 import pandas as pd
+
+from gspread.exceptions import APIError
+
 from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
+from urllib.error import HTTPError
 
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+
 
 class GspreadConnection:
 
@@ -20,12 +25,26 @@ class GspreadConnection:
         return SpreadSheet(sh_id, self.__creds)
 
 
+
 class SpreadSheet:
 
     def __init__(self, sh_id, creds):
         self.__sh_id = sh_id
         self.__creds = creds
-        self.__spreadsheet = gspread.authorize(creds).open_by_key(sh_id)
+
+        try:
+            self.__spreadsheet = gspread.authorize(creds).open_by_key(sh_id)
+
+        except APIError as err:
+            if err.args[0]["code"] == 403:
+                print(err.args[0]["message"])
+                print("gserviceaccount에 액세스 권한이 필요합니다")
+            elif err.args[0]["code"] == 404:
+                print(err.args[0]["message"])
+                print("잘못된 시트 ID 입니다")
+
+        except Exception as e:
+            print(e)
 
 
     def get_sheet_id(self):
