@@ -2,7 +2,7 @@ import re
 import gspread
 import pandas as pd
 
-from gspread.exceptions import APIError
+from gspread.exceptions import APIError, WorksheetNotFound
 
 from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
@@ -36,9 +36,11 @@ class SpreadSheet:
             self.__spreadsheet = gspread.authorize(creds).open_by_key(sh_id)
 
         except APIError as err:
+
             if err.args[0]["code"] == 403:
                 print(err.args[0]["message"])
                 print("gserviceaccount에 액세스 권한이 필요합니다")
+
             elif err.args[0]["code"] == 404:
                 print(err.args[0]["message"])
                 print("잘못된 시트 ID 입니다")
@@ -60,11 +62,46 @@ class SpreadSheet:
         return self.__spreadsheet
 
 
-    def get_worksheet(self, worksheet_name):
+    def get_worksheet(self, worksheet_name, if_not_exist:str="fail"):
         """
         구글 스프레드시트 워크시트 이름으로 워크시트 불러오기
+        
+        Parameter
+        ----------
+        
+        if_not_exist: {"create", "fail"}
+
+            How to behave if the worksheet named 'worksheet_name' is not exist
+            - create : create a new worksheet named 'worksheet_name' and write values to it
+            - fail : raise a ValueError
+            default value is "fail"
+        
         """
-        return self.__spreadsheet.worksheet(worksheet_name)
+
+        assert if_not_exist in ["create", "fail"], "if_not_exist에 잘못된 값 입력 / create, fail 중 하나로 입력해주세요"
+
+        try:
+            worksheet = self.__spreadsheet.worksheet(worksheet_name)
+            
+        # 시트가 없는 경우
+        except WorksheetNotFound:
+
+            if if_not_exist == "fail":
+                print(f"<{worksheet_name}> 이름의 시트가 존재하지 않습니다")
+                worksheet = None
+            
+            else:
+                print(f"<{worksheet_name}> 이름의 시트가 존재하지 않습니다")
+
+                _ = self.create_worksheet(worksheet_name)
+                worksheet = self.__spreadsheet.worksheet(worksheet_name)
+
+        except Exception as e:
+            print(e)
+            worksheet = None
+
+        return worksheet
+
 
 
     def create_worksheet(self, worksheet_name):
@@ -88,6 +125,8 @@ class SpreadSheet:
                 spreadsheetId=self.get_sheet_id(),
                 body=request_body
             ).execute()
+
+            print(f"시트 <{worksheet_name}>가 생성되었습니다")
             return response
 
         except Exception as e:
