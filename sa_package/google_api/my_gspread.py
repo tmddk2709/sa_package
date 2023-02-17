@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import re
-import json
 import gspread
 import pandas as pd
 
 from gspread.exceptions import APIError, WorksheetNotFound
 
 from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError as GoogleApiHttpError
 
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -43,11 +41,9 @@ class SpreadSheet:
         except APIError as err:
 
             if err.args[0]["code"] == 403:
-                print(err.args[0]["message"])
                 print("gserviceaccount에 액세스 권한이 필요합니다")
 
             elif err.args[0]["code"] == 404:
-                print(err.args[0]["message"])
                 print("잘못된 시트 ID 입니다")
 
         except Exception as e:
@@ -415,6 +411,7 @@ def convert_column_alphabet_to_num(col_alphabet):
     return col_num
 
 
+
 def convert_alphabet_range_to_num_index(alphabet_range):
 
     alphabet_regex = re.compile("[A-Z]")
@@ -435,14 +432,3 @@ def convert_alphabet_range_to_num_index(alphabet_range):
     return start_col, start_row, end_col, end_row
 
 
-
-if __name__ == "__main__":
-
-    test_sheet = GspreadConnection(key_path="C:/Users/SANDBOX/sandbox_workspace/sandbox_gaming_datamanagement/key.json").get_spreadsheet(sh_id="1e5l6atYLdjObnK6quVbHRsMoUveIZsoISYOzpbLACGa")
-    # test_sheet.get_worksheet(worksheet_name="시트3", if_not_exist="create")
-    # test_sheet.duplicate_worksheet(worksheet_name="시트5", dup_sheet_name="시트3")
-    # test_sheet.create_worksheet(worksheet_name="시트5")
-    # test_sheet.delete_worksheet(worksheet_name="ejaf;e")
-    test_sheet.write_values_to_sh(values=[["hi"]], worksheet_name="맩덜", start_cell="B1", if_not_exist="create")
-    test_sheet.write_df_to_sh(df=pd.DataFrame(), worksheet_name="ㅇ러댜", if_not_exist="create")
-    test_sheet.get_df_from_gspread(worksheet_name="ㅋㅋ", read_range="A1:F")
