@@ -64,6 +64,7 @@ class SpreadSheet:
         return self.__spreadsheet
 
 
+
     def worksheet_exists(self, worksheet_name:str) -> bool|None:
 
         """
@@ -115,6 +116,12 @@ class SpreadSheet:
 
         return self.__spreadsheet.worksheet(worksheet_name)
 
+
+
+    def get_all_worksheets(self):
+
+        return self.__spreadsheet.worksheets()
+    
 
 
     def create_worksheet(self, worksheet_name:str, row_count:int=1000, col_count:int=10, index:int=0, hidden:bool=False, frozen_row_count:int=None, frozen_column_count:int=None):
@@ -355,7 +362,6 @@ class SpreadSheet:
 
 
 
-
     def append_rows(self, worksheet_name:str, append_row_num:int):
 
         if not self.worksheet_exists(worksheet_name=worksheet_name):
@@ -364,7 +370,6 @@ class SpreadSheet:
 
         worksheet = self.get_worksheet(worksheet_name=worksheet_name)
         worksheet.add_rows(append_row_num)
-
 
 
 
