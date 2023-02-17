@@ -339,6 +339,19 @@ class SpreadSheet:
 
 
 
+
+    def append_rows(self, worksheet_name:str, append_row_num:int):
+
+        if not self.worksheet_exists(worksheet_name=worksheet_name):
+            print(f"{self.update_worksheet_properties.__qualname__} 실패 :: <{worksheet_name}> 이름의 시트가 존재하지 않습니다")
+            return None
+
+        worksheet = self.get_worksheet(worksheet_name=worksheet_name)
+        worksheet.add_rows(append_row_num)
+
+
+
+
     def write_values_to_sh(self, values, worksheet_name:str, start_cell:str, if_not_exist:str="fail"):
 
         """
@@ -517,5 +530,6 @@ def convert_alphabet_range_to_num_index(alphabet_range):
     end_row = None if len(end_row) == 0 else int(end_row)
 
     return start_col, start_row, end_col, end_row
+
 
 
