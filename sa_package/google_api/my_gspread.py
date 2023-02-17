@@ -117,7 +117,7 @@ class SpreadSheet:
 
 
 
-    def create_worksheet(self, worksheet_name):
+    def create_worksheet(self, worksheet_name:str, row_count:int=1000, col_count:int=10, index:int=0, hidden:bool=False, frozen_row_count:int=None, frozen_column_count:int=None):
         """
         새 워크시트 만들기
         """
@@ -128,11 +128,27 @@ class SpreadSheet:
 
 
         service = build("sheets", "v4", credentials=self.get_creds())
+
+        # set grid properties
+        grid_properties = {
+            "rowCount":row_count,
+            "columnCount":col_count
+        }
+        if frozen_row_count is not None:
+            grid_properties["frozenRowCount"] = frozen_row_count
+
+        if frozen_column_count is not None:
+            grid_properties["frozenColumnCount"] = frozen_column_count
+
+
         request_body = {
             "requests": [{
                 "addSheet": {
                     "properties": {
                         "title": worksheet_name,
+                        "index": index,
+                        "hidden": hidden,
+                        "gridProperties": grid_properties,
                     }
                 }
             }]
