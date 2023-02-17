@@ -46,7 +46,7 @@ def upload_df(dbms:str, engine, df, pk_list:list, scheme:str, table:str):
     copy_df = df.copy()
     
     # NaN 값 처리
-    copy_df = copy_df.replace(np.nan, None)
+    copy_df.replace({np.nan: None}, inplace=True)
 
     if dbms == "mysql":
         cols = ', '.join('`{0}`'.format(c) for c in copy_df.columns)
