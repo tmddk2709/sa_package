@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import json
 import gspread
 import pandas as pd
 
@@ -248,8 +249,94 @@ class SpreadSheet:
             body=request_body,
         ).execute()
 
-        return response
-    
+        return response    
+
+
+
+    def set_cell_format(self, worksheet_name:str, set_range:str, fontfamily:str=None, fontsize:int=None, bold:bool=None, italic:bool=None, color:dict=None, horizontal_alignment:str=None, vertical_alignment:str=None, wrap_strategy:str=None, number_format:str=None, number_pattern:str=None, background_color:dict=None):
+
+        """
+        Parameter
+        ---------
+
+        color : dict type
+            {
+                "red":int,
+                "blue":int,
+                "green":int
+            }
+
+        horizontal_alignment : {"LEFT", "RIGHT", "CENTER"}
+
+        vertical_alignment : {"TOP", "MIDDLE", "BOTTOM"}
+
+        wrap_strategy : {"OVERFLOW_CELL", "LEGACY_WRAP", "CLIP", "WRAP"}
+
+        number_Format : {"TEXT", "NUMBER", "PERCENT", "CURRENCY", "DATE", "TIME", "DATE_TIME", "SCIENTIFIC"}
+
+        background_color : dict type
+            {
+                "red":int,
+                "blue":int,
+                "green":int
+            }
+        """
+
+
+        if not self.worksheet_exists(worksheet_name=worksheet_name):
+            print(f"{self.set_cell_format.__qualname__} 실패 :: <{worksheet_name}> 이름의 시트가 존재하지 않습니다")
+            return None
+
+
+        worksheet = self.get_worksheet(worksheet_name=worksheet_name)
+
+        body = {}
+
+        ## textFormat
+        text_format = {}
+        if fontfamily is not None:
+            text_format["fontFamily"] = fontfamily
+
+        if fontsize is not None:
+            text_format["fontSize"] = fontsize
+
+        if bold is not None:
+            text_format["bold"] = bold
+        
+        if italic is not None:
+            text_format["italic"] = italic
+
+        if color is not None:
+            text_format["foregroundColorStyle"] = {"rgbColor":color}
+
+        if len(text_format) > 0:
+            body["textFormat"] = text_format
+
+
+        if horizontal_alignment is not None:
+            body["horizontalAlignment"] = horizontal_alignment
+
+        if vertical_alignment is not None:
+            body["verticalAlignment"] = vertical_alignment
+
+        if wrap_strategy is not None:
+            body["wrapStrategy"] = wrap_strategy
+
+        if number_format is not None:
+            body["numberFormat"] = {
+                "type":number_format,
+                "pattern":number_pattern
+                }
+
+        if background_color is not None:
+            body["backgroundColorSyle"] = {"rgbColor":background_color}
+        
+
+        worksheet.format(
+            set_range,
+            format=body
+        )
+
 
 
     def write_values_to_sh(self, values, worksheet_name:str, start_cell:str, if_not_exist:str="fail"):
