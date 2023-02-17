@@ -1,4 +1,5 @@
 from sqlalchemy import create_engine
+import numpy as np
 
 
 def get_engine(dbms:str, username:str, password:str, host:str, port:int, database:str):
@@ -45,15 +46,7 @@ def upload_df(dbms:str, engine, df, pk_list:list, scheme:str, table:str):
     copy_df = df.copy()
     
     # NaN 값 처리
-    copy_df.fillna("", inplace=True)
-    for col in copy_df.columns:
-        if copy_df[col].dtypes in ['float64', 'int64', "Int64"]:
-            copy_df[col] = copy_df[col].astype(str)    
-            
-    copy_df = copy_df.replace("<NA>", "")
-
-    for col in copy_df.columns:
-        copy_df[col] = copy_df[col].apply(lambda x: None if x == "" else str(x))
+    copy_df = copy_df.replace(np.nan, None)
 
     if dbms == "mysql":
         cols = ', '.join('`{0}`'.format(c) for c in copy_df.columns)
