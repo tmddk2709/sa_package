@@ -64,22 +64,14 @@ class SpreadSheet:
         return self.__spreadsheet
 
 
-
-    def worksheet_exists(self, worksheet_name:str) -> bool|None:
-
-        """
-        check whether a worksheet exists or not with the worksheet name
-        """
-
-        try:
-            _ = self.__spreadsheet.worksheet(worksheet_name)
-            return True
+    def worksheet_exists(self, worksheet_name):
         
+        try:
+            self.get_spreadsheet().worksheet(worksheet_name)
+            return True
         except WorksheetNotFound:
             return False
-        
-        except Exception as e:
-            print(e)
+        else:
             return None
 
 
@@ -102,6 +94,10 @@ class SpreadSheet:
         assert if_not_exist in ["create", "fail"], "if_not_exist에 잘못된 값 입력 / create, fail 중 하나로 입력해주세요"
 
         # 시트가 없는 경우
+        if self.worksheet_exists(worksheet_name=worksheet_name) is None:
+            return None
+
+
         if not self.worksheet_exists(worksheet_name=worksheet_name):
             
             print(f"{self.get_worksheet.__qualname__} 실패 :: <{worksheet_name}> 이름의 시트가 존재하지 않습니다")
