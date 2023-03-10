@@ -1,3 +1,4 @@
+
 import time
 import datetime
 import pandas as pd
@@ -6,6 +7,7 @@ from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import ElementClickInterceptedException
 
 from sa_package.my_selenium.webdriver import MyChromeDriver
 from sa_package.convert.time_format import convert_hhmmss_format_to_sec
@@ -33,7 +35,7 @@ class AfreecaTVDriver(MyChromeDriver):
         if self.__login_id is not None:
             self.login(self.__login_id, self.__login_pwd)
 
-        # self.setting()
+        self.setting()
 
         self.to_home()
 
@@ -67,50 +69,65 @@ class AfreecaTVDriver(MyChromeDriver):
     # 세팅
     def setting(self):
 
-        #TODO - 기존 세팅 정보 참고해서 세팅 설정하기
-
         sample_vod_url = "https://vod.afreecatv.com/player/93937795"
         self.get(sample_vod_url)
         time.sleep(3)
+
+        print("--- 세팅 중 ---")
         
-        # 애드벌룬 광고창 지우기
+        #자동재생 설정
         try:
-            if self.find_element(By.CSS_SELECTOR, '#player_area > div.htmlplayer_wrap > div > div.player_item_list.playbackrate.pip.statistics.smallest > ul > li.adballoon > div.speech_bubble').get_attribute("style") == 'display: block;':
-                self.find_element(By.CSS_SELECTOR, '#player_area > div.htmlplayer_wrap > div > div.player_item_list.playbackrate.pip.statistics.smallest > ul > li.adballoon > div.speech_bubble > a').click()
+            if self.find_element(By.CSS_SELECTOR, '#autoplay').get_attribute("checked") == 'true':
+                print("   자동재생 끄기")
+                self.find_element(By.XPATH, '//*[@id="tabList"]/dl[1]/dt/label/span').click()
                 time.sleep(0.5)
         except Exception as e:
+            print(e)
             pass
 
 
-        self.find_element(By.CSS_SELECTOR, '#afreecatv_player > div.nextvideo > dl > dd.nextplay > a').click()
-
-        # 자동재생 설정
-        # if self.__kwargs.get("autoplay", "OFF") == "OFF":
-        # try:
-        #     if self.find_element(By.CSS_SELECTOR, '#autoplay').get_attribute("checked") == 'true':
-        #         self.find_element(By.XPATH, '//*[@id="playlistP"]/dt/label/span').click()
-        #         time.sleep(0.5)
-        # except Exception as e:
-        #     pass
-
-        # 리스트 지우기
-        # if self.__kwargs.get("vodlist", "OFF") == "OFF":
-        # try:
-        #     self.find_element(By.CSS_SELECTOR, '#list_area > div.area_header > ul:nth-child(2) > li.close > a').click()
-        #     time.sleep(0.5)
-        # except Exception as e:
-        #     pass
-
-        
-
-        # 스크린모드 설정하기
+        # 리스트 끄기
         try:
-            # 스크린모드
-            screenmode_button = self.find_element(By.CSS_SELECTOR, '#btnSmode')
-            a = ActionChains(self)
-            a.move_to_element(screenmode_button).perform()
-            screenmode_button.click()
+            self.find_element(By.CSS_SELECTOR, '.webplayer_vod.list_open')
+            print("   list 끄기")
+            
+            self.find_element(By.CSS_SELECTOR, '#list_area > div.area_header > ul > li.close > a').click()
+            time.sleep(0.5)
 
+        except Exception as e:
+            
+            pass
+        
+        # 재생버튼 클릭
+        try:
+            time.sleep(3)
+            self.find_element(By.CSS_SELECTOR, '#afreecatv_player > div.nextvideo > dl > dd.nextplay > a').click()
+            time.sleep(1)
+        except Exception as e:
+            pass
+        
+        # 알림창 있는 경우 사라질 때까지 기다리기
+        while len(self.find_elements(By.CSS_SELECTOR, '.alert_text')) > 0:
+            time.sleep(1)
+            
+
+        # 채팅창 끄기
+        try:        
+            self.find_element(By.CSS_SELECTOR, '.webplayer_vod.chat_open')
+            print("   채팅창 끄기")
+
+            self.find_element(By.CSS_SELECTOR, '#chatting_area > div > div.area_header > ul > li.close > a').click()
+            time.sleep(0.5)
+
+        except Exception as e:
+            pass
+
+        # 애드벌룬 있는 경우 끄기
+        try:
+            if self.find_element(By.CSS_SELECTOR, '#player_area > div.htmlplayer_wrap > div > div.player_item_list.playbackrate.pip.statistics.smallest > ul > li.adballoon > div.speech_bubble').get_attribute("style") == 'display: block;':
+                self.find_element(By.CSS_SELECTOR, '#player_area > div.htmlplayer_wrap > div > div.player_item_list.playbackrate.pip.statistics.smallest > ul > li.adballoon > div.speech_bubble > a').click()
+                print("   애드벌룬 끄기")
+                time.sleep(0.5)
         except Exception as e:
             pass
 
@@ -255,6 +272,7 @@ def get_vod_viewer_info(vod_id, vod_time, driver=None):
         driver = AfreecaTVDriver()
 
     link = f"https://vod.afreecatv.com/player/{vod_id}?change_second={vod_time-15}"
+    link = f"https://vod.afreecatv.com/player/{vod_id}?change_second=1"
     driver.get(link)
 
 
@@ -296,21 +314,9 @@ def get_vod_viewer_info(vod_id, vod_time, driver=None):
         pass
 
 
-    # 리스트 끄기
-    try:
-        driver.find_element(By.CSS_SELECTOR, '#list_area > div.area_header > ul > li.close > a').click()
-        time.sleep(0.5)
-
-    except Exception as e:
-        pass
-
-    # 채팅창 끄기
-    try:        
-        driver.find_element(By.CSS_SELECTOR, '#chatting_area > div > div.area_header > ul > li.close > a').click()
-        time.sleep(0.5)
-
-    except Exception as e:
-        pass
+    # 알림창 있는 경우 사라질 때까지 기다리기
+    while len(driver.find_elements(By.CSS_SELECTOR, '.alert_text')) > 0:
+        time.sleep(1)
 
     # 애드벌룬 있는 경우 끄기
     try:
@@ -320,24 +326,36 @@ def get_vod_viewer_info(vod_id, vod_time, driver=None):
     except Exception as e:
         pass
     
-    # try:
-    #     # 스크린모드
-    #     screenmode_button = driver.find_element(By.CSS_SELECTOR, '#btnSmode')
-    #     a = ActionChains(driver)
-    #     a.move_to_element(screenmode_button).perform()
-    #     screenmode_button.click()
 
-    # except Exception as e:
-    #     pass
+    # 스크린모드
+    if len(driver.find_elements(By.CSS_SELECTOR, '.smode')) == 0:
+        screenmode_button = driver.find_element(By.CSS_SELECTOR, '#btnSmode')
+        a = ActionChains(driver)
+        a.move_to_element(screenmode_button).perform()
+        screenmode_button.click()
 
 
+    # 방송 별별통계 클릭
     try:
-        # 방송 별별통계 클릭
+        
         star_stat_button = driver.find_element(By.CSS_SELECTOR, '.btn_statistics')
         a = ActionChains(driver)
         a.move_to_element(star_stat_button).perform() # 아래 메뉴 나오도록 호버링
         star_stat_button.click()
         time.sleep(1)
+
+    except ElementClickInterceptedException:
+        time.sleep(3)
+        star_stat_button = driver.find_element(By.CSS_SELECTOR, '.btn_statistics')
+        a = ActionChains(driver)
+        a.move_to_element(star_stat_button).perform() # 아래 메뉴 나오도록 호버링
+        star_stat_button.click()
+
+    except Exception as e:
+        print(e)
+        
+
+    try:
 
         target_li = None
         for li_idx, li in enumerate(driver.find_elements(By.CSS_SELECTOR, '.statistics_list_contents > ul > li')):
@@ -378,9 +396,14 @@ def get_vod_viewer_info(vod_id, vod_time, driver=None):
                 time.sleep(0.5)
                 a.move_to_element(peak).perform()
                 tooltip = driver.find_element(By.CSS_SELECTOR, 'g.highcharts-tooltip')
+
+                # PCCV가 0으로 나오는 경우
+                if int(tooltip.text.split("명")[0].replace(",", "")) == 0:
+                    raise ValueError
+                
                 vod_info_df.loc[0, "pccv"] = int(tooltip.text.split("명")[0].replace(",", ""))
                 
-                # CCV
+                # ACCV
                 data = driver.find_element(By.CSS_SELECTOR, 'svg > g.highcharts-series-group > g.highcharts-series > path:nth-child(1)').get_attribute("d")
                 y_range = float(data.split(" L ")[0].split()[-1])
                 cleansed_data = data.split(" L ")[1:-1]
@@ -484,3 +507,4 @@ def get_vod_viewer_info(vod_id, vod_time, driver=None):
         print(e)
 
     return vod_info_df
+
